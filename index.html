@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Asistencia - Protección Civil</title>
+    <style>
+        :root {
+            --system-orange: #FF6600;
+            --system-blue: #0A2240;
+            --system-bg: #F2F2F7;
+            --card-bg: rgba(255, 255, 255, 0.85);
+            --text-primary: #1C1C1E;
+            --text-secondary: #8E8E93;
+            --success: #34C759;
+            --danger: #FF3B30;
+            --border-color: rgba(60, 60, 67, 0.18);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Icons", "Helvetica Neue", Helvetica, Arial, sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        body {
+            background-color: var(--system-bg);
+            background-image: radial-gradient(circle at 50% 0%, rgba(255, 102, 0, 0.08) 0%, transparent 60%);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding: env(safe-area-inset-top, 20px) 16px env(safe-area-inset-bottom, 20px) 16px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .ios-container {
+            width: 100%;
+            max-width: 480px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .ios-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 4px;
+        }
+
+        .header-content .subtitle {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--system-orange);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .header-content h1 {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--system-blue);
+            letter-spacing: -0.5px;
+        }
+
+        .user-avatar {
+            width: 42px;
+            height: 42px;
+            background: linear-gradient(135deg, var(--system-blue), #1b365d);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 0.95rem;
+            box-shadow: 0 4px 10px rgba(10, 34, 64, 0.2);
+            cursor: pointer;
+        }
+
+        .ios-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            border-radius: 24px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
+        }
+
+        .view {
+            display: none;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .view.active {
+            display: flex;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-bottom: 12px;
+        }
+
+        .input-group label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-left: 4px;
+        }
+
+        .ios-input {
+            width: 100%;
+            padding: 14px 16px;
+            background: rgba(255, 255, 255, 0.8);
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            font-size: 1rem;
+            color: var(--text-primary);
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .ios-input:focus {
+            border-color: var(--system-orange);
+            background: #fff;
+        }
+
+        .form-switch {
+            text-align: center;
+            margin-top: 10px;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .form-switch a {
+            color: var(--system-orange);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .status-card {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .status-icon {
+            font-size: 1.8rem;
+            background: rgba(255, 102, 0, 0.1);
+            width: 50px;
+            height: 50px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .status-info h3 {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .status-text {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-top: 2px;
+        }
+
+        .status-text.ready { color: var(--success); font-weight: 600; }
+        .status-text.error { color: var(--danger); font-weight: 600; }
+
+        .actions-card h3, .history-card h3 {
+            font-size: 1.05rem;
+            font-weight: 600;
+            margin-bottom: 14px;
+            color: var(--text-primary);
+        }
+
+        .button-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .ios-btn {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            border-radius: 16px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            transition: transform 0.15s ease, opacity 0.15s ease;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+
+        .ios-btn:active:not(:disabled) { transform: scale(0.97); }
+        .ios-btn:disabled {
+            background-color: #E5E5EA !important;
+            color: #8E8E93 !important;
+            box-shadow: none;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+
+        .btn-success { background: var(--success); color: white; }
+        .btn-danger { background: var(--danger); color: white; }
+        .btn-primary { background: var(--system-orange); color: white; }
+
+        .history-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .history-list li {
+            background: rgba(255, 255, 255, 0.6);
+            padding: 12px 16px;
+            border-radius: 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.9rem;
+        }
+
+        .text-muted { color: var(--text-secondary); text-align: center; width: 100%; padding: 10px 0; }
+
+        .ios-modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 20px;
+        }
+
+        .ios-modal-overlay.hidden { display: none; }
+
+        .ios-modal {
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+            width: 100%;
+            max-width: 320px;
+            border-radius: 24px;
+            overflow: hidden;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+            text-align: center;
+            animation: scaleUp 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .modal-body { padding: 24px 20px 20px 20px; }
+        .modal-body h3 { font-size: 1.15rem; font-weight: 600; margin-bottom: 8px; }
+        .modal-body p { font-size: 0.9rem; color: var(--text-secondary); line-height: 1.4; }
+
+        .modal-footer { display: flex; border-top: 0.5px solid rgba(60, 60, 67, 0.2); }
+        .modal-btn {
+            flex: 1; padding: 16px; background: transparent; border: none;
+            font-size: 1rem; font-weight: 500; cursor: pointer; transition: background 0.1s;
+        }
+        .modal-btn.cancel { color: var(--text-secondary); border-right: 0.5px solid rgba(60, 60, 67, 0.2); }
+        .modal-btn.confirm { color: var(--system-orange); font-weight: 600; }
+
+        @keyframes scaleUp {
+            from { transform: scale(0.9); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="ios-container">
+        <header class="ios-header">
+            <div class="header-content">
+                <span class="subtitle">Protección Civil</span>
+                <h1 id="header-title">Iniciar Sesión</h1>
+            </div>
+            <div class="user-avatar" id="user-avatar" title="Cerrar sesión" onclick="app.logout()" style="display: none;">PC</div>
+        </header>
+
+        <!-- VISTA 1: LOGIN -->
+        <section id="login-view" class="view active">
+            <div class="ios-card">
+                <h3 style="margin-bottom: 16px;">Acceso de Personal</h3>
+                <form onsubmit="app.handleLogin(event)">
+                    <div class="input-group">
+                        <label>Correo Electrónico</label>
+                        <input type="email" id="login-email" class="ios-input" placeholder="ejemplo@proteccioncivil.gob" required>
+                    </div>
+                    <button type="submit" class="ios-btn btn-primary" style="margin-top: 10px;">Ingresar al Sistema</button>
+                </form>
+                <div class="form-switch">
+                    ¿No tienes cuenta? <a href="#" onclick="app.switchView('register-view')">Regístrate aquí</a>
+                </div>
+            </div>
+        </section>
+
+        <!-- VISTA 2: REGISTRO -->
+        <section id="register-view" class="view">
+            <div class="ios-card">
+                <h3 style="margin-bottom: 16px;">Registro de Funcionario</h3>
+                <form onsubmit="app.handleRegister(event)">
+                    <div class="input-group">
+                        <label>Nombre</label>
+                        <input type="text" id="reg-nombre" class="ios-input" placeholder="Ej. Braian" required>
+                    </div>
+                    <div class="input-group">
+                        <label>Apellido</label>
+                        <input type="text" id="reg-apellido" class="ios-input" placeholder="Ej. Barrios" required>
+                    </div>
+                    <div class="input-group">
+                        <label>Cédula de Identidad</label>
+                        <input type="text" id="reg-id" class="ios-input" placeholder="Ej. V-26000000" required>
+                    </div>
+                    <div class="input-group">
+                        <label>Correo Electrónico</label>
+                        <input type="email" id="reg-email" class="ios-input" placeholder="correo@proteccioncivil.gob" required>
+                    </div>
+                    <button type="submit" class="ios-btn btn-primary" style="margin-top: 10px;">Crear Cuenta</button>
+                </form>
+                <div class="form-switch">
+                    ¿Ya tienes cuenta? <a href="#" onclick="app.switchView('login-view')">Inicia sesión</a>
+                </div>
+            </div>
+        </section>
+
+        <!-- VISTA 3: PANEL DEL EMPLEADO -->
+        <section id="employee-view" class="view">
+            <div class="ios-card status-card">
+                <div class="status-icon">📍</div>
+                <div class="status-info">
+                    <h3>Verificación de Sede</h3>
+                    <p id="geo-status" class="status-text">Comprobando ubicación GPS...</p>
+                </div>
+            </div>
+
+            <div class="ios-card actions-card">
+                <h3>Registro de Jornada</h3>
+                <div class="button-grid">
+                    <button id="btn-llegada" class="ios-btn btn-success" disabled onclick="app.requestAction('Llegada')">
+                        <span>Registrar Llegada</span>
+                    </button>
+                    <button id="btn-salida" class="ios-btn btn-danger" disabled onclick="app.requestAction('Salida')">
+                        <span>Registrar Salida</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="ios-card history-card">
+                <h3>Tus Registros Recientes</h3>
+                <ul id="employee-history" class="history-list">
+                    <li><span class="text-muted">No hay registros recientes</span></li>
+                </ul>
+            </div>
+        </section>
+    </div>
+
+    <!-- MODAL DE CONFIRMACIÓN -->
+    <div id="confirmation-modal" class="ios-modal-overlay hidden">
+        <div class="ios-modal">
+            <div class="modal-body">
+                <h3>Confirmar Acción</h3>
+                <p id="modal-message">¿Estás seguro de registrar tu acción en este momento?</p>
+            </div>
+            <div class="modal-footer">
+                <button onclick="app.closeModal()" class="modal-btn cancel">Cancelar</button>
+                <button id="btn-confirm" class="modal-btn confirm">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCRIPT DE FIREBASE REALTIME DATABASE -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getDatabase, ref, set, push, get, query, orderByChild, equalTo } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+        // CONFIGURACIÓN DE FIREBASE REALTIME DATABASE
+        const firebaseConfig = {
+            databaseURL: "https://talento-humano-72df2-default-rtdb.firebaseio.com/",
+            projectId: "talento-humano-72df2"
+        };
+
+        const firebaseApp = initializeApp(firebaseConfig);
+        const db = getDatabase(firebaseApp);
+
+        // Coordenadas exactas de tu sede de Protección Civil
+const SEDE_COORDS = { lat: 10.80937186742546, lng: -71.75403603422217 }; 
+const RADIO_PERMITIDO_METROS = 100; 
+        const app = {
+            init() {
+                const activeUser = JSON.parse(localStorage.getItem('pc_active_user'));
+                if (activeUser) {
+                    this.startEmployeeSession(activeUser);
+                } else {
+                    this.switchView('login-view');
+                }
+            },
+
+            switchView(viewId) {
+                document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+                document.getElementById(viewId).classList.add('active');
+                
+                const titles = {
+                    'login-view': 'Iniciar Sesión',
+                    'register-view': 'Registro de Cuenta',
+                    'employee-view': 'Control de Asistencia'
+                };
+                document.getElementById('header-title').textContent = titles[viewId] || 'Protección Civil';
+            },
+
+            async handleRegister(e) {
+                e.preventDefault();
+                const nombre = document.getElementById('reg-nombre').value.trim();
+                const apellido = document.getElementById('reg-apellido').value.trim();
+                const id = document.getElementById('reg-id').value.trim();
+                const email = document.getElementById('reg-email').value.trim().toLowerCase();
+
+                try {
+                    // Verificar si el correo ya existe en Realtime Database
+                    const usersRef = ref(db, 'users');
+                    const emailQuery = query(usersRef, orderByChild("email"), equalTo(email));
+                    const snapshot = await get(emailQuery);
+
+                    if (snapshot.exists()) {
+                        alert('❌ Este correo ya está registrado en el sistema.');
+                        return;
+                    }
+
+                    const newUser = { id, nombre, apellido, email };
+                    
+                    // Guardar nuevo usuario usando push en la rama 'users'
+                    const newUserRef = push(usersRef);
+                    await set(newUserRef, newUser);
+
+                    alert('✅ Cuenta creada exitosamente en Firebase.');
+                    this.startEmployeeSession(newUser);
+                } catch (error) {
+                    console.error("Error al registrar:", error);
+                    alert('❌ Error de conexión con Firebase.');
+                }
+            },
+
+            async handleLogin(e) {
+                e.preventDefault();
+                const email = document.getElementById('login-email').value.trim().toLowerCase();
+
+                try {
+                    const usersRef = ref(db, 'users');
+                    const emailQuery = query(usersRef, orderByChild("email"), equalTo(email));
+                    const snapshot = await get(emailQuery);
+
+                    if (!snapshot.exists()) {
+                        alert('❌ Correo no encontrado en la base de datos.');
+                        return;
+                    }
+
+                    let userData = null;
+                    snapshot.forEach((childSnapshot) => {
+                        userData = childSnapshot.val();
+                    });
+
+                    this.startEmployeeSession(userData);
+                } catch (error) {
+                    console.error("Error al iniciar sesión:", error);
+                    alert('❌ Error al conectar con la base de datos.');
+                }
+            },
+
+            startEmployeeSession(user) {
+                localStorage.setItem('pc_active_user', JSON.stringify(user));
+                window.currentUser = user;
+                
+                const avatar = document.getElementById('user-avatar');
+                avatar.textContent = `${user.nombre[0]}${user.apellido[0]}`.toUpperCase();
+                avatar.style.display = 'flex';
+
+                this.switchView('employee-view');
+                this.initGeolocation();
+                this.renderEmployeeHistory();
+            },
+
+            logout() {
+                localStorage.removeItem('pc_active_user');
+                document.getElementById('user-avatar').style.display = 'none';
+                document.getElementById('login-email').value = '';
+                this.switchView('login-view');
+            },
+
+            initGeolocation() {
+                const geoStatus = document.getElementById('geo-status');
+                
+                if (!navigator.geolocation) {
+                    geoStatus.textContent = "Geolocalización no soportada.";
+                    geoStatus.className = "status-text error";
+                    return;
+                }
+
+                navigator.geolocation.watchPosition(
+                    (position) => {
+                        const { latitude, longitude } = position.coords;
+                        const distance = this.calculateDistance(latitude, longitude, SEDE_COORDS.lat, SEDE_COORDS.lng);
+
+                        if (distance <= RADIO_PERMITIDO_METROS) {
+                            geoStatus.textContent = "En la sede (Ubicación verificada)";
+                            geoStatus.className = "status-text ready";
+                            document.getElementById('btn-llegada').disabled = false;
+                            document.getElementById('btn-salida').disabled = false;
+                        } else {
+                            geoStatus.textContent = `Fuera de rango (${Math.round(distance)}m de la sede)`;
+                            geoStatus.className = "status-text error";
+                            document.getElementById('btn-llegada').disabled = true;
+                            document.getElementById('btn-salida').disabled = true;
+                        }
+                    },
+                    (error) => {
+                        geoStatus.textContent = "Activa el GPS para registrar asistencia.";
+                        geoStatus.className = "status-text error";
+                    },
+                    { enableHighAccuracy: true }
+                );
+            },
+
+            calculateDistance(lat1, lon1, lat2, lon2) {
+                const R = 6371e3; 
+                const φ1 = lat1 * Math.PI/180;
+                const φ2 = lat2 * Math.PI/180;
+                const Δφ = (lat2-lat1) * Math.PI/180;
+                const Δλ = (lon2-lon1) * Math.PI/180;
+
+                const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+                          Math.cos(φ1) * Math.cos(φ2) *
+                          Math.sin(Δλ/2) * Math.sin(Δλ/2);
+                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+                return R * c; 
+            },
+
+            requestAction(tipo) {
+                window.pendingAction = tipo;
+                document.getElementById('modal-message').textContent = `¿Estás seguro de registrar tu ${tipo} en este momento?`;
+                
+                const btnConfirm = document.getElementById('btn-confirm');
+                const newBtnConfirm = btnConfirm.cloneNode(true);
+                btnConfirm.parentNode.replaceChild(newBtnConfirm, btnConfirm);
+                newBtnConfirm.addEventListener('click', () => this.executeAction());
+
+                document.getElementById('confirmation-modal').classList.remove('hidden');
+            },
+
+            closeModal() {
+                document.getElementById('confirmation-modal').classList.add('hidden');
+                window.pendingAction = null;
+            },
+
+            async executeAction() {
+                const tipo = window.pendingAction;
+                const user = JSON.parse(localStorage.getItem('pc_active_user'));
+                
+                const record = {
+                    ID_Empleado: user.id,
+                    Nombre: user.nombre,
+                    Apellido: user.apellido,
+                    Email: user.email,
+                    Tipo_Registro: tipo,
+                    Timestamp_Exacto: new Date().toISOString(),
+                    Sancion_Horas: null,
+                    Estado_Asistencia: "Registrado"
+                };
+
+                try {
+                    const recordsRef = ref(db, 'records');
+                    await push(recordsRef, record);
+                    
+                    this.closeModal();
+                    this.renderEmployeeHistory();
+                    alert(`✅ ${tipo} registrada y guardada en Firebase exitosamente.`);
+                } catch (error) {
+                    console.error("Error al guardar asistencia:", error);
+                    alert("❌ Error al registrar en la base de datos.");
+                }
+            },
+
+            async renderEmployeeHistory() {
+                const list = document.getElementById('employee-history');
+                const user = JSON.parse(localStorage.getItem('pc_active_user'));
+                
+                try {
+                    const recordsRef = ref(db, 'records');
+                    const emailQuery = query(recordsRef, orderByChild("Email"), equalTo(user.email));
+                    const snapshot = await get(emailQuery);
+                    
+                    let myRecords = [];
+                    if (snapshot.exists()) {
+                        snapshot.forEach((childSnapshot) => {
+                            myRecords.push(childSnapshot.val());
+                        });
+                    }
+
+                    myRecords.sort((a, b) => new Date(b.Timestamp_Exacto) - new Date(a.Timestamp_Exacto));
+                    
+                    if (myRecords.length === 0) {
+                        list.innerHTML = '<li><span class="text-muted">No hay registros recientes</span></li>';
+                        return;
+                    }
+
+                    list.innerHTML = myRecords.map(r => `
+                        <li>
+                            <strong>${r.Tipo_Registro}</strong>
+                            <span style="color: var(--text-secondary);">${new Date(r.Timestamp_Exacto).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                        </li>
+                    `).join('');
+                } catch (error) {
+                    console.error("Error cargando historial:", error);
+                }
+            }
+        };
+
+        window.app = app;
+        document.addEventListener('DOMContentLoaded', () => app.init());
+    </script>
+</body>
+</html>
