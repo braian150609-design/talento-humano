@@ -1,0 +1,1847 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Protección Civil - Control de Asistencia</title>
+    <style>
+        :root {
+            --ios-bg: #0b132b;          
+            --ios-card-bg: rgba(28, 37, 65, 0.85); 
+            --ios-text: #ffffff;        
+            --ios-subtext: #94a3b8;     
+            --ios-primary: #ff6b00;     
+            --ios-success: #22c55e;     
+            --ios-danger: #ef4444;      
+            --ios-warning: #f59e0b;
+            --ios-border: rgba(255, 255, 255, 0.1);
+            --ios-radius: 20px;
+            --backdrop-blur: blur(20px);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: var(--ios-bg);
+            color: var(--ios-text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .screen {
+            display: none;
+            flex: 1;
+            flex-direction: column;
+            animation: fadeIn 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+        }
+
+        .screen.active {
+            display: flex;
+        }
+
+        #auth-screen.active, #hr-pin-screen.active {
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.98); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            width: 90%;
+            max-width: 400px;
+            pointer-events: none;
+        }
+
+        .ios-toast {
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: var(--backdrop-blur);
+            color: #fff;
+            padding: 12px 18px;
+            border-radius: 14px;
+            font-size: 14px;
+            border: 1px solid var(--ios-border);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            animation: slideDown 0.3s ease;
+            pointer-events: auto;
+        }
+
+        .ios-toast.error { border-color: var(--ios-danger); background: rgba(239, 68, 68, 0.9); }
+        .ios-toast.success { border-color: var(--ios-success); background: rgba(34, 197, 94, 0.9); }
+        .ios-toast.warning { border-color: var(--ios-warning); background: rgba(245, 158, 11, 0.9); }
+
+        @keyframes slideDown {
+            from { transform: translateY(-20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .ios-card {
+            background: var(--ios-card-bg);
+            backdrop-filter: var(--backdrop-blur);
+            -webkit-backdrop-filter: var(--backdrop-blur);
+            border: 1px solid var(--ios-border);
+            border-radius: var(--ios-radius);
+            padding: 20px;
+            margin-bottom: 16px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+        }
+
+        .auth-card {
+            width: 100%;
+            max-width: 420px;
+            text-align: center;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .app-icon {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+
+        .auth-card h2 {
+            font-size: 24px;
+            font-weight: 700;
+            color: #ffffff;
+            margin-bottom: 4px;
+        }
+
+        .subtitle {
+            color: var(--ios-subtext);
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+
+        .segmented-control {
+            display: flex;
+            background: rgba(15, 23, 42, 0.6);
+            border-radius: 9px;
+            padding: 2px;
+            margin-bottom: 20px;
+            border: 1px solid var(--ios-border);
+        }
+
+        .segment {
+            flex: 1;
+            background: transparent;
+            border: none;
+            padding: 8px;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--ios-subtext);
+            border-radius: 7px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .segment.active {
+            background: var(--ios-primary);
+            color: #ffffff;
+            box-shadow: 0 3px 8px rgba(255, 107, 0, 0.3);
+            font-weight: 600;
+        }
+
+        .auth-form {
+            display: none;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .auth-form.active {
+            display: flex;
+        }
+
+        .input-group input, .input-group select {
+            width: 100%;
+            padding: 14px 16px;
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid var(--ios-border);
+            border-radius: 12px;
+            font-size: 15px;
+            color: var(--ios-text);
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .input-group input:focus, .input-group select:focus {
+            border-color: var(--ios-primary);
+        }
+
+        .input-label {
+            display: block;
+            text-align: left;
+            font-size: 12px;
+            color: var(--ios-subtext);
+            margin-bottom: 4px;
+            margin-left: 4px;
+        }
+
+        .ios-button {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 14px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.1s, opacity 0.2s;
+        }
+
+        .ios-button:active {
+            transform: scale(0.97);
+            opacity: 0.8;
+        }
+
+        .ios-button.primary { background: var(--ios-primary); color: #fff; box-shadow: 0 4px 14px rgba(255, 107, 0, 0.4); }
+        .ios-button.success { background: var(--ios-success); color: #fff; }
+        .ios-button.danger { background: var(--ios-danger); color: #fff; }
+        .ios-button.warning { background: var(--ios-warning); color: #fff; }
+        .ios-button:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; transform: none !important; }
+
+        .ios-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 20px;
+            background: var(--ios-card-bg);
+            backdrop-filter: var(--backdrop-blur);
+            border-bottom: 1px solid var(--ios-border);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .ios-header h1 {
+            font-size: 18px;
+            font-weight: 600;
+            color: #ffffff;
+        }
+
+        .ios-icon-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+        }
+
+        .ios-content {
+            padding: 16px;
+            max-width: 700px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 17px;
+            font-weight: 600;
+        }
+
+        .dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .dot.offline { background: var(--ios-subtext); }
+        .dot.online { background: var(--ios-success); box-shadow: 0 0 10px var(--ios-success); }
+
+        .status-subtext {
+            color: var(--ios-subtext);
+            font-size: 13px;
+            margin-top: 4px;
+        }
+
+        .card-desc {
+            color: var(--ios-subtext);
+            font-size: 13px;
+            margin-bottom: 12px;
+        }
+
+        .gps-info {
+            font-size: 13px;
+            margin-bottom: 16px;
+        }
+
+        .action-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .double-tap-btn .btn-subtext {
+            display: block;
+            font-size: 11px;
+            font-weight: 400;
+            opacity: 0.8;
+        }
+
+        .history-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-height: 250px;
+            overflow-y: auto;
+        }
+
+        .history-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 12px;
+            background: rgba(15, 23, 42, 0.5);
+            border-radius: 10px;
+            font-size: 13px;
+            border: 1px solid var(--ios-border);
+        }
+
+        .skeleton-row {
+            height: 40px;
+            background: linear-gradient(90deg, rgba(255,255,255,0.05) 25%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0.05) 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+            border-radius: 10px;
+        }
+
+        @keyframes shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        .filter-group {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .filter-group input, .filter-group select {
+            flex: 1;
+            min-width: 140px;
+            padding: 10px;
+            border-radius: 10px;
+            border: 1px solid var(--ios-border);
+            background: rgba(15, 23, 42, 0.6);
+            color: var(--ios-text);
+            font-size: 13px;
+        }
+
+        .table-responsive {
+            overflow-x: auto;
+        }
+
+        .ios-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            text-align: left;
+        }
+
+        .ios-table th, .ios-table td {
+            padding: 10px;
+            border-bottom: 1px solid var(--ios-border);
+        }
+
+        .ios-table th {
+            font-weight: 600;
+            color: var(--ios-subtext);
+        }
+
+        .badge {
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .badge.success { background: rgba(34, 197, 94, 0.2); color: #4ade80; }
+        .badge.danger { background: rgba(239, 68, 68, 0.2); color: #f87171; }
+        .badge.warning { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+
+        .hr-nav {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+
+        .hr-nav-btn {
+            flex: 1;
+            min-width: 110px;
+            padding: 10px 6px;
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid var(--ios-border);
+            color: var(--ios-subtext);
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .hr-nav-btn.active {
+            background: var(--ios-primary);
+            color: #fff;
+            border-color: transparent;
+        }
+
+        .hr-section {
+            display: none;
+        }
+
+        .hr-section.active {
+            display: block;
+        }
+
+        .row-actions {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .small-btn {
+            padding: 4px 8px;
+            font-size: 11px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .small-btn.edit { background: rgba(59, 130, 246, 0.2); color: #60a5fa; }
+        .small-btn.del { background: rgba(239, 68, 68, 0.2); color: #f87171; }
+        .small-btn.success { background: rgba(34, 197, 94, 0.2); color: #4ade80; }
+        .small-btn.warning { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+    </style>
+</head>
+<body>
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- Pantalla Autenticación -->
+    <div id="auth-screen" class="screen active">
+        <div class="auth-card ios-card">
+            <div class="app-icon">🛡️</div>
+            <h2>Protección Civil</h2>
+            <p class="subtitle">Sistema de Control Operativo</p>
+
+            <div class="segmented-control">
+                <button id="tab-login" class="segment active" onclick="switchAuthTab('login')">Iniciar Sesión</button>
+                <button id="tab-register" class="segment" onclick="switchAuthTab('register')">Registrarse</button>
+            </div>
+
+            <form id="login-form" class="auth-form active" onsubmit="handleLogin(event)">
+                <div class="input-group">
+                    <input type="email" id="login-email" placeholder="Correo electrónico" required>
+                </div>
+                <div class="input-group">
+                    <input type="password" id="login-password" placeholder="Contraseña" required>
+                </div>
+                <button type="submit" class="ios-button primary">Entrar</button>
+            </form>
+
+            <form id="register-form" class="auth-form" onsubmit="handleRegister(event)">
+                <div class="input-group">
+                    <input type="text" id="reg-name" placeholder="Nombre Completo" required>
+                </div>
+                <div class="input-group">
+                    <input type="text" id="reg-cedula" placeholder="Cédula de Identidad (Ej: V-12345678)" required>
+                </div>
+                <div class="input-group">
+                    <input type="email" id="reg-email" placeholder="Correo electrónico" required>
+                </div>
+                <div class="input-group">
+                    <input type="password" id="reg-password" placeholder="Contraseña (mín. 6 caracteres)" required>
+                </div>
+                <div class="input-group">
+                    <label for="reg-role" class="input-label">Rol Operativo:</label>
+                    <select id="reg-role" class="ios-select">
+                        <option value="worker" style="background: #0b132b; color: #fff;">Trabajador (Operativo)</option>
+                        <option value="hr" style="background: #0b132b; color: #fff;">Talento Humano (Administrador)</option>
+                    </select>
+                </div>
+
+                <!-- Opción de Personal Médico integrada al auto-registro -->
+                <div class="input-group" style="display: flex; align-items: center; gap: 10px; background: rgba(15, 23, 42, 0.6); padding: 12px 16px; border: 1px solid var(--ios-border); border-radius: 12px;">
+                    <input type="checkbox" id="reg-is-medical" onchange="toggleRegisterMedicalFields()" style="width: 20px; height: 20px; accent-color: var(--ios-primary); cursor: pointer;">
+                    <label for="reg-is-medical" style="font-size: 14px; color: var(--ios-text); cursor: pointer; font-weight: 500;">¿Es Personal Médico / Guardia?</label>
+                </div>
+
+                <div id="register-medical-container" style="display: none; flex-direction: column; gap: 10px; background: rgba(15, 23, 42, 0.3); padding: 12px; border-radius: 12px; border: 1px dashed var(--ios-border);">
+                    <div class="input-group">
+                        <input type="text" id="reg-specialty" placeholder="Especialidad (Ej: Médico General, Paramédico, Enfermero)">
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">Guardias al Mes (Cuota):</label>
+                        <input type="number" id="reg-guards" placeholder="Cantidad de guardias" value="10" min="1">
+                    </div>
+                </div>
+
+                <button type="submit" class="ios-button primary">Registrar Cuenta</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Pantalla PIN de Seguridad Talento Humano -->
+    <div id="hr-pin-screen" class="screen">
+        <div class="auth-card ios-card">
+            <div class="app-icon">🔐</div>
+            <h2>Acceso Restringido</h2>
+            <p class="subtitle">Ingrese la clave de Talento Humano</p>
+            <form onsubmit="verifyHRPin(event)" class="auth-form active">
+                <div class="input-group">
+                    <input type="password" id="hr-secure-pin" placeholder="Clave de seguridad HR" required>
+                </div>
+                <button type="submit" class="ios-button primary">Desbloquear Panel</button>
+            </form>
+            <button onclick="handleLogout()" class="ios-button danger" style="margin-top: 10px;">Cerrar Sesión</button>
+        </div>
+    </div>
+
+    <!-- Vista Trabajador -->
+    <div id="worker-screen" class="screen">
+        <header class="ios-header">
+            <h1>Panel Operativo</h1>
+            <button class="ios-icon-btn" onclick="handleLogout()" title="Cerrar Sesión">🚪</button>
+        </header>
+
+        <main class="ios-content">
+            <div id="worker-blocked-notice" style="display:none;" class="ios-card">
+                <div class="status-indicator" style="color:var(--ios-danger);">
+                    <span class="dot" style="background:var(--ios-danger);"></span>
+                    <span>Cuenta Expulsada / Bloqueada</span>
+                </div>
+                <p class="status-subtext">Ha acumulado 3 amonestaciones por inasistencia y ha sido expulsado del sistema.</p>
+            </div>
+
+            <!-- Tarjeta de Progreso Médico (Visible solo si el trabajador es médico) -->
+            <div id="worker-medical-card" class="ios-card" style="display: none;">
+                <h3>Mi Progreso Médico (Mes Actual)</h3>
+                <p class="card-desc" id="worker-medical-desc">Cargando control de guardias...</p>
+            </div>
+
+            <div class="ios-card status-card">
+                <div class="status-indicator">
+                    <span id="status-dot" class="dot offline"></span>
+                    <span id="status-text">Fuera de servicio</span>
+                </div>
+                <p id="status-time" class="status-subtext">Verificando estado de hoy...</p>
+            </div>
+
+            <div class="ios-card action-card">
+                <h3>Registro de Asistencia GPS</h3>
+                <p class="card-desc">Radio permitido: 50 metros de la Sede Principal. (Una entrada y una salida por día)</p>
+                <div class="gps-info">
+                    <span>Estado GPS: <strong id="gps-status">Verificando...</strong></span>
+                </div>
+                
+                <div class="action-buttons">
+                    <button id="btn-checkin" class="ios-button success double-tap-btn" onclick="handleAttendance('IN')" disabled>
+                        <span class="btn-text">Registrar Entrada</span>
+                        <span class="btn-subtext">Toca dos veces para confirmar</span>
+                    </button>
+                    <button id="btn-checkout" class="ios-button danger double-tap-btn" onclick="handleAttendance('OUT')" disabled>
+                        <span class="btn-text">Registrar Salida</span>
+                        <span class="btn-subtext">Toca dos veces para confirmar</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="ios-card">
+                <h3>Mi Historial de Asistencia</h3>
+                <div id="worker-history-list" class="history-list">
+                    <div class="skeleton-row"></div>
+                    <div class="skeleton-row"></div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Vista Talento Humano (Admin) -->
+    <div id="hr-screen" class="screen">
+        <header class="ios-header">
+            <h1>Control de Personal (HR)</h1>
+            <button class="ios-icon-btn" onclick="handleLogout()" title="Cerrar Sesión">🚪</button>
+        </header>
+
+        <main class="ios-content">
+            <div class="hr-nav">
+                <button class="hr-nav-btn active" onclick="switchHRTab('attendance')">Asistencia</button>
+                <button class="hr-nav-btn" onclick="switchHRTab('workers')">Trabajadores</button>
+                <button class="hr-nav-btn" onclick="switchHRTab('groups')">Grupos</button>
+                <button class="hr-nav-btn" onclick="switchHRTab('medical')">Personal Médico</button>
+            </div>
+
+            <!-- SECCIÓN 1: ASISTENCIA Y SANCIONES -->
+            <div id="hr-sec-attendance" class="hr-section active">
+                <div class="ios-card">
+                    <h3>Filtros de Búsqueda</h3>
+                    <div class="filter-group" style="margin-top: 10px;">
+                        <input type="text" id="filter-search" placeholder="Nombre o Cédula..." oninput="filterAttendanceLogs()">
+                        <input type="date" id="filter-date" onchange="document.getElementById('filter-period').value='all'; filterAttendanceLogs();">
+                    </div>
+                </div>
+
+               <!-- HISTORIAL GENERAL DE MARCAJES CON FILTRO Y DESPLEGABLE DE ARCHIVO -->
+                <div class="ios-card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 12px;">
+                        <h3 style="margin: 0;">Historial General de Marcajes</h3>
+                        <select id="filter-period" class="ios-select" onchange="onPeriodChange()" style="padding: 8px 12px; border-radius: 10px; border: 1px solid var(--ios-border); background: rgba(15, 23, 42, 0.6); color: var(--ios-text); font-size: 13px;">
+                            <option value="today" selected>📅 Hoy (Prioridad)</option>
+                            <option value="week">Esta Semana</option>
+                            <option value="month">Este Mes Actual</option>
+                            <option value="archive">📂 Buscar por Mes Antiguo</option>
+                            <option value="all">Ver Todo el Histórico</option>
+                        </select>
+                    </div>
+
+                    <!-- Desplegable dinámico para archivos por meses antiguos -->
+                    <div id="archive-selector-container" style="display: none; margin-bottom: 12px; background: rgba(15, 23, 42, 0.4); padding: 12px; border-radius: 10px; border: 1px dashed var(--ios-border);">
+                        <label class="input-label">Seleccionar Mes de Archivo Antiguo:</label>
+                        <select id="archive-month-select" class="ios-select" onchange="filterAttendanceLogs()" style="width: 100%; padding: 10px; border-radius: 8px; background: rgba(15, 23, 42, 0.8); color: #fff; border: 1px solid var(--ios-border);">
+                            <!-- Se llena dinámicamente con los meses que tengan registros -->
+                        </select>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="ios-table">
+                            <thead>
+                                <tr>
+                                    <th>Trabajador</th>
+                                    <th>Cédula</th>
+                                    <th>Tipo</th>
+                                    <th>Fecha/Hora</th>
+                                </tr>
+                            </thead>
+                            <tbody id="hr-table-body">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECCIÓN 2: GESTIÓN DE TRABAJADORES Y MÉDICOS -->
+            <div id="hr-sec-workers" class="hr-section">
+                <div class="ios-card">
+                    <h3 id="worker-form-title">Registrar Nuevo Trabajador</h3>
+                    <form id="worker-crud-form" onsubmit="handleWorkerSubmit(event)" style="margin-top: 10px; display: flex; flex-direction: column; gap: 10px;">
+                        <input type="hidden" id="edit-worker-id">
+                        <div class="input-group">
+                            <input type="text" id="w-name" placeholder="Nombre Completo" required>
+                        </div>
+                        <div class="input-group">
+                            <input type="text" id="w-cedula" placeholder="Cédula (Ej: V-12345678) - Única" required>
+                        </div>
+                        <div class="input-group">
+                            <input type="email" id="w-email" placeholder="Correo electrónico" required>
+                        </div>
+                        <div class="input-group">
+                            <select id="w-group" class="ios-select" required>
+                                <option value="">Seleccionar Grupo de Trabajo</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Opción de Personal Médico integrada al registro de trabajador -->
+                        <div class="input-group" style="display: flex; align-items: center; gap: 10px; background: rgba(15, 23, 42, 0.6); padding: 12px 16px; border: 1px solid var(--ios-border); border-radius: 12px;">
+                            <input type="checkbox" id="w-is-medical" onchange="toggleWorkerMedicalFields()" style="width: 20px; height: 20px; accent-color: var(--ios-primary); cursor: pointer;">
+                            <label for="w-is-medical" style="font-size: 14px; color: var(--ios-text); cursor: pointer; font-weight: 500;">¿Es Personal Médico / Guardia?</label>
+                        </div>
+
+                        <div id="worker-medical-container" style="display: none; flex-direction: column; gap: 10px; background: rgba(15, 23, 42, 0.3); padding: 12px; border-radius: 12px; border: 1px dashed var(--ios-border);">
+                            <div class="input-group">
+                                <input type="text" id="w-specialty" placeholder="Especialidad (Ej: Médico General, Paramédico, Enfermero)">
+                            </div>
+                            <div class="input-group">
+                                <label class="input-label">Guardias al Mes (Cuota):</label>
+                                <input type="number" id="w-guards" placeholder="Cantidad de guardias" value="10" min="1">
+                            </div>
+                        </div>
+
+                        <button type="submit" class="ios-button primary" id="w-submit-btn">Guardar Trabajador</button>
+                        <button type="button" id="w-cancel-btn" class="ios-button danger" style="display:none;" onclick="resetWorkerForm()">Cancelar Edición</button>
+                    </form>
+                </div>
+
+                <div class="ios-card">
+                    <h3>Listado de Trabajadores Registrados</h3>
+                    <div class="table-responsive" style="margin-top: 10px;">
+                        <table class="ios-table">
+                            <thead>
+                                <tr>
+                                    <th>Nombre / Correo</th>
+                                    <th>Cédula</th>
+                                    <th>Grupo / Rol Médico</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="workers-table-body">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECCIÓN 3: GRUPOS Y HORARIOS -->
+            <div id="hr-sec-groups" class="hr-section">
+                <div class="ios-card">
+                    <h3 id="group-form-title">Crear Grupo de Trabajo</h3>
+                    <form id="group-crud-form" onsubmit="handleGroupSubmit(event)" style="margin-top: 10px; display: flex; flex-direction: column; gap: 10px;">
+                        <input type="hidden" id="edit-group-id">
+                        <div class="input-group">
+                            <input type="text" id="g-name" placeholder="Nombre del Grupo (Ej: Guardia Alpha)" required>
+                        </div>
+                        <div class="input-group">
+                            <label class="input-label">Tipo de Horario:</label>
+                            <select id="g-type" class="ios-select" onchange="toggleGroupFields()" required>
+                                <option value="lunes-viernes">Lunes a Viernes (Fijo)</option>
+                                <option value="24x48">Rotativo 24x48</option>
+                            </select>
+                        </div>
+                        <div class="input-group" id="group-start-date-container" style="display:none;">
+                            <label class="input-label">Día de inicio del rol rotativo:</label>
+                            <input type="date" id="g-startdate">
+                        </div>
+                        <div class="input-group">
+                            <label class="input-label">Hora de Entrada Esperada:</label>
+                            <input type="time" id="g-time" value="08:00" required>
+                        </div>
+                        <div class="input-group">
+                            <input type="number" id="g-tolerance" placeholder="Tolerancia en Minutos (Ej: 15)" value="15" min="0" required>
+                        </div>
+                        <button type="submit" class="ios-button primary" id="g-submit-btn">Guardar Grupo</button>
+                        <button type="button" id="g-cancel-btn" class="ios-button danger" style="display:none;" onclick="resetGroupForm()">Cancelar Edición</button>
+                    </form>
+                </div>
+
+                <div class="ios-card action-card">
+    <h3>Registro de Asistencia GPS</h3>
+    <!-- 1. Actualiza el texto descriptivo -->
+    <p class="card-desc">Radio permitido: 50 metros de Sede Central o Sub-Sede.</p> 
+    
+    <div class="gps-info">
+        <span>Estado GPS: <strong id="gps-status">Verificando...</strong></span>
+        <!-- 2. Agrega este párrafo si quieres mostrar la sede detectada -->
+        <div id="detected-location" style="font-size: 12px; color: var(--ios-subtext); margin-top: 4px;"></div>
+    </div>
+    
+    <div class="action-buttons">
+        <!-- botones de entrada y salida... -->
+    </div>
+</div>
+
+            <!-- SECCIÓN 4: PERSONAL MÉDICO (Cálculo Automático de Guardias) -->
+            <div id="hr-sec-medical" class="hr-section">
+                <div class="ios-card">
+                    <h3>Control Automático de Personal Médico (Mes Actual)</h3>
+                    <p class="card-desc">El sistema resta automáticamente las asistencias (entradas) registradas en el mes en curso frente a la cuota mensual configurada.</p>
+                    <div class="table-responsive" style="margin-top: 10px;">
+                        <table class="ios-table">
+                            <thead>
+                                <tr>
+                                    <th>Personal / Especialidad</th>
+                                    <th>Cédula / Correo</th>
+                                    <th>Control de Guardias (Mes Actual)</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="medical-table-body">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Script de Aplicación y Firebase -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { 
+            getAuth, 
+            signInWithEmailAndPassword, 
+            createUserWithEmailAndPassword, 
+            signOut, 
+            onAuthStateChanged,
+            inMemoryPersistence,
+            setPersistence
+        } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { 
+            getFirestore, 
+            doc, 
+            setDoc, 
+            getDoc, 
+            updateDoc, 
+            deleteDoc, 
+            collection, 
+            addDoc, 
+            query, 
+            orderBy, 
+            onSnapshot, 
+            serverTimestamp 
+        } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCY3IS6fS21gdOWXfCYU7IJOyq-GcNQg8Q",
+            authDomain: "asistencias-6f64c.firebaseapp.com",
+            databaseURL: "https://asistencias-6f64c-default-rtdb.firebaseio.com",
+            projectId: "asistencias-6f64c",
+            storageBucket: "asistencias-6f64c.firebasestorage.app",
+            messagingSenderId: "307076098538",
+            appId: "1:307076098538:web:ff4dc6e775dcfb3f312a93",
+            measurementId: "G-TNRLZMPC04"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        setPersistence(auth, inMemoryPersistence).catch(() => {});
+
+        const SEDES_PERMITIDAS = [
+    {
+        nombre: "Sede Principal",
+        lat: 10.809315592841122,
+        lng: -71.75400866098828
+    },
+    {
+        nombre: "Sub-Sede / Módulo",
+        lat: 10.96165334052268,
+        lng: -71.72791954927142
+    }, // <--- Fíjate en esta coma, es vital para separar las sedes
+    {
+        nombre: "Nueva Sede (Tercera)",
+        lat: 10.818918108201487, // Reemplazas con la nueva latitud
+        lng: -71.85714193535611 // Reemplazas con la nueva longitud
+    }
+];
+
+const RADIO_PERMITIDO_METROS = 100;
+
+        const HR_SECRET_PIN = "2026"; 
+        let currentUserData = null;
+        let isHRVerified = false;
+        let doubleTapState = { action: null, timeout: null };
+        let allAttendanceLogs = [];
+        let allWorkers = [];
+        let allGroups = [];
+        let allMedicalStaff = [];
+        let isWithinGPS = false;
+        let hasInToday = false;
+        let hasOutToday = false;
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `ios-toast ${type}`;
+            toast.innerHTML = `<span>${message}</span>`;
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        }
+
+        window.switchAuthTab = function(tab) {
+            document.getElementById('tab-login').classList.toggle('active', tab === 'login');
+            document.getElementById('tab-register').classList.toggle('active', tab === 'register');
+            document.getElementById('login-form').classList.toggle('active', tab === 'login');
+            document.getElementById('register-form').classList.toggle('active', tab === 'register');
+        };
+
+        window.switchHRTab = function(tabKey) {
+            document.querySelectorAll('.hr-nav-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.hr-section').forEach(s => s.classList.remove('active'));
+
+            if (tabKey === 'attendance') {
+                document.querySelectorAll('.hr-nav-btn')[0].classList.add('active');
+                document.getElementById('hr-sec-attendance').classList.add('active');
+            } else if (tabKey === 'workers') {
+                document.querySelectorAll('.hr-nav-btn')[1].classList.add('active');
+                document.getElementById('hr-sec-workers').classList.add('active');
+            } else if (tabKey === 'groups') {
+                document.querySelectorAll('.hr-nav-btn')[2].classList.add('active');
+                document.getElementById('hr-sec-groups').classList.add('active');
+            } else if (tabKey === 'medical') {
+                document.querySelectorAll('.hr-nav-btn')[3].classList.add('active');
+                document.getElementById('hr-sec-medical').classList.add('active');
+            }
+        };
+
+        function showScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(screenId).classList.add('active');
+        }
+
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                try {
+                    const userRef = doc(db, "users", user.uid);
+                    const userDoc = await getDoc(userRef);
+                    
+                    if (userDoc.exists()) {
+                        currentUserData = { uid: user.uid, ...userDoc.data() };
+                    } else {
+                        currentUserData = {
+                            uid: user.uid,
+                            name: user.email.split('@')[0],
+                            cedula: 'V-00000000',
+                            email: user.email,
+                            role: 'worker',
+                            warnings: 0,
+                            isExpelled: false
+                        };
+                    }
+                } catch (error) {
+                    currentUserData = {
+                        uid: user.uid,
+                        name: user.email.split('@')[0],
+                        cedula: 'V-00000000',
+                        email: user.email,
+                        role: 'worker',
+                        warnings: 0,
+                        isExpelled: false
+                    };
+                }
+
+                if (currentUserData.isExpelled && currentUserData.role === 'worker') {
+                    showScreen('worker-screen');
+                    document.getElementById('worker-blocked-notice').style.display = 'block';
+                    document.getElementById('btn-checkin').disabled = true;
+                    document.getElementById('btn-checkout').disabled = true;
+                    return;
+                }
+
+                if (currentUserData && currentUserData.role === 'hr') {
+                    if (!isHRVerified) {
+                        showScreen('hr-pin-screen');
+                    } else {
+                        showScreen('hr-screen');
+                        initHRModule();
+                    }
+                } else {
+                    showScreen('worker-screen');
+                    initWorkerModule();
+                }
+            } else {
+                currentUserData = null;
+                isHRVerified = false;
+                showScreen('auth-screen');
+            }
+        });
+
+        window.verifyHRPin = function(e) {
+            e.preventDefault();
+            const pin = document.getElementById('hr-secure-pin').value;
+            if (pin === HR_SECRET_PIN) {
+                isHRVerified = true;
+                showToast("Acceso concedido a Talento Humano", "success");
+                showScreen('hr-screen');
+                initHRModule();
+            } else {
+                showToast("Clave de seguridad incorrecta", "error");
+            }
+        };
+
+        window.handleLogin = async function(e) {
+            e.preventDefault();
+            const email = document.getElementById('login-email').value;
+            const pass = document.getElementById('login-password').value;
+            try {
+                await signInWithEmailAndPassword(auth, email, pass);
+                showToast("¡Bienvenido de nuevo!", "success");
+            } catch (error) {
+                showToast("Credenciales incorrectas o error de red", "error");
+            }
+        };
+
+        window.toggleRegisterMedicalFields = function() {
+            const isChecked = document.getElementById('reg-is-medical').checked;
+            document.getElementById('register-medical-container').style.display = isChecked ? 'flex' : 'none';
+        };
+
+        window.handleRegister = async function(e) {
+            e.preventDefault();
+            const name = document.getElementById('reg-name').value;
+            const cedula = document.getElementById('reg-cedula').value.trim();
+            const email = document.getElementById('reg-email').value;
+            const pass = document.getElementById('reg-password').value;
+            const role = document.getElementById('reg-role').value;
+            const isMedical = document.getElementById('reg-is-medical').checked;
+            const specialty = document.getElementById('reg-specialty').value;
+            const monthlyGuards = parseInt(document.getElementById('reg-guards').value) || 10;
+
+            try {
+                const userCred = await createUserWithEmailAndPassword(auth, email, pass);
+                const targetUid = userCred.user.uid;
+
+                await setDoc(doc(db, "users", targetUid), {
+                    name,
+                    cedula,
+                    email,
+                    role,
+                    groupId: "",
+                    warnings: 0,
+                    isExpelled: false,
+                    isMedical,
+                    specialty: isMedical ? specialty : '',
+                    monthlyGuards: isMedical ? monthlyGuards : 0,
+                    createdAt: serverTimestamp()
+                });
+
+                if (isMedical) {
+                    await addDoc(collection(db, "medicalStaff"), {
+                        uid: targetUid,
+                        name,
+                        cedula,
+                        email,
+                        specialty,
+                        monthlyGuards
+                    });
+                }
+
+                showToast("Registro exitoso", "success");
+            } catch (error) {
+                showToast("Error en registro: " + error.message, "error");
+            }
+        };
+
+        window.handleLogout = function() {
+            signOut(auth);
+            isHRVerified = false;
+            showToast("Sesión cerrada", "info");
+        };
+
+        function initWorkerModule() {
+            checkGPSPosition();
+            loadWorkerHistory();
+            
+            const medicalCard = document.getElementById('worker-medical-card');
+            if (currentUserData && currentUserData.isMedical) {
+                medicalCard.style.display = 'block';
+                updateWorkerMedicalCard();
+            } else {
+                medicalCard.style.display = 'none';
+            }
+        }
+
+        function updateWorkerMedicalCard() {
+            if (!currentUserData || !currentUserData.isMedical) return;
+            const currentYearMonth = new Date().toISOString().slice(0, 7);
+            const myCompleted = allAttendanceLogs.filter(l => l.uid === currentUserData.uid && l.type === 'IN' && l.dateString && l.dateString.startsWith(currentYearMonth)).length;
+            const quota = currentUserData.monthlyGuards || 10;
+            const remaining = Math.max(0, quota - myCompleted);
+
+            document.getElementById('worker-medical-desc').innerHTML = `
+                Especialidad: <strong>${currentUserData.specialty || 'General'}</strong><br>
+                Meta mensual: <strong>${quota} guardias</strong><br>
+                <span style="color:var(--ios-success);">Cumplidas este mes: ${myCompleted}</span><br>
+                <span style="color:var(--ios-warning);">Restantes por cumplir: ${remaining}</span>
+            `;
+        }
+
+        function checkGPSPosition() {
+            const gpsStatusEl = document.getElementById('gps-status');
+            if (!navigator.geolocation) {
+                gpsStatusEl.textContent = "Geolocalización no soportada";
+                return;
+            }
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const currentLat = position.coords.latitude;
+                    const currentLng = position.coords.longitude;
+                    let sedeValida = null;
+        let menorDistancia = Infinity;
+
+        // 1. Recorremos las sedes para calcular a cuál está más cerca el trabajador
+        SEDES_PERMITIDAS.forEach(sede => {
+            const distancia = calculateDistance(currentLat, currentLng, sede.lat, sede.lng);
+            
+            // Guardamos la distancia más corta registrada
+            if (distancia < menorDistancia) {
+                menorDistancia = distancia;
+            }
+            
+            // Si la distancia está dentro de los 50 metros, confirmamos esa sede
+            if (distancia <= RADIO_PERMITIDO_METROS) {
+                sedeValida = sede;
+            }
+        });
+
+        const locationText = document.getElementById('detected-location');
+
+        // 2. Evaluamos si encontró una sede válida y actualizamos la interfaz
+        if (sedeValida) {
+            gpsStatusEl.textContent = `Dentro del perímetro (${Math.round(menorDistancia)}m)`;
+            gpsStatusEl.style.color = "var(--ios-success)";
+            if (locationText) locationText.innerText = `Ubicación: ${sedeValida.nombre}`;
+            isWithinGPS = true;
+        } else {
+            gpsStatusEl.textContent = `Fuera de sede (${Math.round(menorDistancia)}m de distancia)`;
+            gpsStatusEl.style.color = "var(--ios-danger)";
+            if (locationText) locationText.innerText = "Debes estar a menos de 50m de una sede autorizada.";
+            isWithinGPS = false;
+            showToast("Estás fuera del radio permitido de las sedes", "error");
+        }
+        
+        updateButtonStates();
+                },
+                (error) => {
+                    gpsStatusEl.textContent = "Error al obtener GPS (Verifique permisos)";
+                    gpsStatusEl.style.color = "var(--ios-danger)";
+                    isWithinGPS = false;
+                    updateButtonStates();
+                    showToast("Active el GPS para registrar asistencia", "error");
+                },
+                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+            );
+        }
+
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371e3;
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                      Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
+        }
+
+        function updateButtonStates() {
+            const btnCheckin = document.getElementById('btn-checkin');
+            const btnCheckout = document.getElementById('btn-checkout');
+            const dot = document.getElementById('status-dot');
+            const text = document.getElementById('status-text');
+            const timeText = document.getElementById('status-time');
+
+            if (currentUserData && currentUserData.isExpelled) return;
+
+            if (hasOutToday) {
+                dot.className = "dot offline";
+                text.textContent = "Jornada Finalizada";
+                timeText.textContent = "Ya registraste tu entrada y salida el día de hoy.";
+                btnCheckin.disabled = true;
+                btnCheckout.disabled = true;
+            } else if (hasInToday) {
+                dot.className = "dot online";
+                text.textContent = "En servicio";
+                timeText.textContent = "Entrada registrada hoy. Pendiente salida.";
+                btnCheckin.disabled = true;
+                btnCheckout.disabled = !isWithinGPS;
+            } else {
+                dot.className = "dot offline";
+                text.textContent = "Fuera de servicio";
+                timeText.textContent = "Pendiente por registrar entrada hoy.";
+                btnCheckin.disabled = !isWithinGPS;
+                btnCheckout.disabled = true;
+            }
+        }
+
+        window.handleAttendance = async function(type) {
+            const btnId = type === 'IN' ? 'btn-checkin' : 'btn-checkout';
+            const btn = document.getElementById(btnId);
+
+            if (doubleTapState.action !== type) {
+                doubleTapState.action = type;
+                btn.style.transform = "scale(0.96)";
+                const originalText = btn.querySelector('.btn-subtext').textContent;
+                btn.querySelector('.btn-subtext').textContent = "¡Toca de nuevo para confirmar!";
+                
+                if (doubleTapState.timeout) clearTimeout(doubleTapState.timeout);
+                
+                doubleTapState.timeout = setTimeout(() => {
+                    doubleTapState.action = null;
+                    btn.querySelector('.btn-subtext').textContent = originalText;
+                    btn.style.transform = "none";
+                }, 2500);
+
+                showToast("Confirme presionando nuevamente el botón", "info");
+                return;
+            }
+
+            clearTimeout(doubleTapState.timeout);
+            doubleTapState.action = null;
+            btn.style.transform = "none";
+
+            try {
+                await addDoc(collection(db, "attendance"), {
+                    uid: currentUserData.uid,
+                    name: currentUserData.name,
+                    cedula: currentUserData.cedula,
+                    type: type,
+                    timestamp: serverTimestamp(),
+                    dateString: new Date().toISOString().split('T')[0],
+                    appealed: false
+                });
+
+                showToast(type === 'IN' ? "¡Entrada registrada con éxito!" : "¡Salida registrada con éxito!", "success");
+                loadWorkerHistory();
+            } catch (error) {
+                showToast("Error al registrar asistencia", "error");
+            }
+        };
+
+        function loadWorkerHistory() {
+            const historyList = document.getElementById('worker-history-list');
+            const todayStr = new Date().toISOString().split('T')[0];
+            
+            const q = query(
+                collection(db, "attendance"),
+                orderBy("timestamp", "desc")
+            );
+
+            onSnapshot(q, (snapshot) => {
+                historyList.innerHTML = "";
+                let docs = [];
+                snapshot.forEach((docSnap) => {
+                    const data = docSnap.data();
+                    if (data.uid === currentUserData.uid) {
+                        docs.push({ id: docSnap.id, ...data });
+                    }
+                });
+
+                if (docs.length === 0) {
+                    historyList.innerHTML = `<p class="subtitle" style="text-align:center;">No hay registros previos</p>`;
+                    hasInToday = false;
+                    hasOutToday = false;
+                    updateButtonStates();
+                    return;
+                }
+
+                hasInToday = false;
+                hasOutToday = false;
+
+                docs.forEach((data) => {
+                    if (data.dateString === todayStr) {
+                        if (data.type === 'IN') hasInToday = true;
+                        if (data.type === 'OUT') hasOutToday = true;
+                    }
+
+                    const timeFormatted = data.timestamp ? data.timestamp.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Procesando...';
+                    const typeLabel = data.type === 'IN' ? 'Entrada' : 'Salida';
+                    
+                    const item = document.createElement('div');
+                    item.className = 'history-item';
+                    item.innerHTML = `
+                        <span><strong>${typeLabel}</strong> - ${data.dateString || ''}</span>
+                        <span>${timeFormatted}</span>
+                    `;
+                    historyList.appendChild(item);
+                });
+
+                updateButtonStates();
+            }, (error) => {
+                historyList.innerHTML = `<p class="subtitle" style="text-align:center;">Error al cargar historial</p>`;
+            });
+        }
+
+        // MÓDULO TALENTO HUMANO (ADMIN)
+        function initHRModule() {
+            onSnapshot(query(collection(db, "groups")), (snapshot) => {
+                allGroups = [];
+                snapshot.forEach(docSnap => {
+                    allGroups.push({ id: docSnap.id, ...docSnap.data() });
+                });
+                renderGroupsTable();
+                populateGroupSelects();
+                evaluateTodayStaff();
+            });
+
+            onSnapshot(query(collection(db, "users")), (snapshot) => {
+                allWorkers = [];
+                snapshot.forEach(docSnap => {
+                    allWorkers.push({ id: docSnap.id, ...docSnap.data() });
+                });
+                renderWorkersTable();
+                renderMedicalTable();
+                evaluateTodayStaff();
+            });
+
+            onSnapshot(query(collection(db, "medicalStaff")), (snapshot) => {
+                allMedicalStaff = [];
+                snapshot.forEach(docSnap => {
+                    allMedicalStaff.push({ id: docSnap.id, ...docSnap.data() });
+                });
+                renderMedicalTable();
+            });
+
+            onSnapshot(query(collection(db, "attendance"), orderBy("timestamp", "desc")), (snapshot) => {
+                allAttendanceLogs = [];
+                snapshot.forEach(docSnap => {
+                    allAttendanceLogs.push({ id: docSnap.id, ...docSnap.data() });
+                });
+                filterAttendanceLogs();
+                renderMedicalTable();
+                evaluateTodayStaff();
+            });
+        }
+
+        window.toggleGroupFields = function() {
+            const type = document.getElementById('g-type').value;
+            const container = document.getElementById('group-start-date-container');
+            container.style.display = (type === '24x48') ? 'block' : 'none';
+        };
+
+        window.handleGroupSubmit = async function(e) {
+            e.preventDefault();
+            const editId = document.getElementById('edit-group-id').value;
+            const name = document.getElementById('g-name').value;
+            const type = document.getElementById('g-type').value;
+            const startDate = document.getElementById('g-startdate').value;
+            const time = document.getElementById('g-time').value;
+            const tolerance = parseInt(document.getElementById('g-tolerance').value) || 15;
+
+            const groupData = { name, type, startDate: type === '24x48' ? startDate : '', time, tolerance };
+
+            try {
+                if (editId) {
+                    await updateDoc(doc(db, "groups", editId), groupData);
+                    showToast("Grupo actualizado con éxito", "success");
+                } else {
+                    await addDoc(collection(db, "groups"), groupData);
+                    showToast("Grupo creado con éxito", "success");
+                }
+                resetGroupForm();
+            } catch (err) {
+                showToast("Error al guardar grupo", "error");
+            }
+        };
+
+        function renderGroupsTable() {
+            const tbody = document.getElementById('groups-table-body');
+            tbody.innerHTML = "";
+            if (allGroups.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--ios-subtext);">No hay grupos creados</td></tr>`;
+                return;
+            }
+
+            allGroups.forEach(g => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><strong>${g.name}</strong></td>
+                    <td>${g.type === '24x48' ? 'Rotativo 24x48' : 'Lunes a Viernes'}</td>
+                    <td>${g.time} (Tol: ${g.tolerance}m)</td>
+                    <td>
+                        <div class="row-actions">
+                            <button class="small-btn edit" onclick="editGroup('${g.id}')">Editar</button>
+                            <button class="small-btn del" onclick="deleteGroup('${g.id}')">Borrar</button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        window.editGroup = function(id) {
+            const g = allGroups.find(x => x.id === id);
+            if (!g) return;
+            document.getElementById('edit-group-id').value = g.id;
+            document.getElementById('g-name').value = g.name;
+            document.getElementById('g-type').value = g.type;
+            document.getElementById('g-startdate').value = g.startDate || '';
+            document.getElementById('g-time').value = g.time || '08:00';
+            document.getElementById('g-tolerance').value = g.tolerance || 15;
+            document.getElementById('group-form-title').textContent = "Editar Grupo";
+            document.getElementById('g-submit-btn').textContent = "Actualizar Grupo";
+            document.getElementById('g-cancel-btn').style.display = 'block';
+            toggleGroupFields();
+        };
+
+        window.resetGroupForm = function() {
+            document.getElementById('group-crud-form').reset();
+            document.getElementById('edit-group-id').value = "";
+            document.getElementById('group-form-title').textContent = "Crear Grupo de Trabajo";
+            document.getElementById('g-submit-btn').textContent = "Guardar Grupo";
+            document.getElementById('g-cancel-btn').style.display = 'none';
+            toggleGroupFields();
+        };
+
+        window.deleteGroup = async function(id) {
+            if (confirm("¿Estás seguro de eliminar este grupo?")) {
+                await deleteDoc(doc(db, "groups", id));
+                showToast("Grupo eliminado", "success");
+            }
+        };
+
+        window.toggleWorkerMedicalFields = function() {
+            const isChecked = document.getElementById('w-is-medical').checked;
+            document.getElementById('worker-medical-container').style.display = isChecked ? 'flex' : 'none';
+        };
+
+        function populateGroupSelects() {
+            const select = document.getElementById('w-group');
+            select.innerHTML = `<option value="">Seleccionar Grupo de Trabajo</option>`;
+            allGroups.forEach(g => {
+                select.innerHTML += `<option value="${g.id}">${g.name} (${g.type})</option>`;
+            });
+        }
+
+        window.handleWorkerSubmit = async function(e) {
+            e.preventDefault();
+            const editId = document.getElementById('edit-worker-id').value;
+            const name = document.getElementById('w-name').value;
+            const cedula = document.getElementById('w-cedula').value.trim();
+            const email = document.getElementById('w-email').value;
+            const groupId = document.getElementById('w-group').value;
+            const isMedical = document.getElementById('w-is-medical').checked;
+            const specialty = document.getElementById('w-specialty').value;
+            const monthlyGuards = parseInt(document.getElementById('w-guards').value) || 10;
+
+            const duplicate = allWorkers.find(w => w.cedula === cedula && w.id !== editId);
+            if (duplicate) {
+                showToast("¡La cédula ya está registrada con otro trabajador!", "error");
+                return;
+            }
+
+            try {
+                let targetUid = editId;
+
+                if (editId) {
+                    await updateDoc(doc(db, "users", editId), { 
+                        name, 
+                        cedula, 
+                        email, 
+                        groupId, 
+                        isMedical, 
+                        specialty: isMedical ? specialty : '', 
+                        monthlyGuards: isMedical ? monthlyGuards : 0 
+                    });
+
+                    const existingMedical = allMedicalStaff.find(m => m.uid === editId || m.cedula === cedula);
+                    if (isMedical) {
+                        if (existingMedical) {
+                            await updateDoc(doc(db, "medicalStaff", existingMedical.id), { name, cedula, email, specialty, monthlyGuards });
+                        } else {
+                            await addDoc(collection(db, "medicalStaff"), { uid: editId, name, cedula, email, specialty, monthlyGuards });
+                        }
+                    } else if (existingMedical) {
+                        await deleteDoc(doc(db, "medicalStaff", existingMedical.id));
+                    }
+
+                    showToast("Trabajador actualizado con éxito", "success");
+                } else {
+                    const userCred = await createUserWithEmailAndPassword(auth, email, "temporal123");
+                    targetUid = userCred.user.uid;
+
+                    await setDoc(doc(db, "users", targetUid), {
+                        name, 
+                        cedula, 
+                        email, 
+                        groupId, 
+                        role: 'worker', 
+                        warnings: 0, 
+                        isExpelled: false, 
+                        isMedical,
+                        specialty: isMedical ? specialty : '',
+                        monthlyGuards: isMedical ? monthlyGuards : 0,
+                        createdAt: serverTimestamp()
+                    });
+
+                    if (isMedical) {
+                        await addDoc(collection(db, "medicalStaff"), {
+                            uid: targetUid,
+                            name,
+                            cedula,
+                            email,
+                            specialty,
+                            monthlyGuards
+                        });
+                    }
+
+                    showToast("Trabajador registrado con éxito (Contraseña temporal: temporal123)", "success");
+                }
+                resetWorkerForm();
+            } catch (err) {
+                showToast("Error al procesar trabajador: " + err.message, "error");
+            }
+        };
+
+        function renderWorkersTable() {
+            const tbody = document.getElementById('workers-table-body');
+            tbody.innerHTML = "";
+            const workersOnly = allWorkers.filter(w => w.role === 'worker');
+
+            if (workersOnly.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--ios-subtext);">No hay trabajadores registrados</td></tr>`;
+                return;
+            }
+
+            workersOnly.forEach(w => {
+                const groupObj = allGroups.find(g => g.id === w.groupId);
+                const groupName = groupObj ? groupObj.name : 'Sin Asignar';
+                const statusLabel = w.isExpelled ? `<span class="badge danger">Expulsado</span>` : `Amonestaciones: ${w.warnings || 0}/3`;
+                const medicalBadge = w.isMedical ? `<br><span class="badge success">Médico: ${w.specialty || 'General'} (${w.monthlyGuards || 0} cuota)</span>` : '';
+                
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><strong>${w.name}</strong><br><small style="color:var(--ios-subtext);">${w.email}</small></td>
+                    <td>${w.cedula}</td>
+                    <td>${groupName}<br><small>${statusLabel}</small>${medicalBadge}</td>
+                    <td>
+                        <div class="row-actions">
+                            <button class="small-btn edit" onclick="editWorker('${w.id}')">Editar</button>
+                            <button class="small-btn del" onclick="deleteWorker('${w.id}')">Borrar</button>
+                            ${w.isExpelled ? `<button class="small-btn success" onclick="restoreWorker('${w.id}')">Reintegrar</button>` : ``}
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        window.editWorker = function(id) {
+            const w = allWorkers.find(x => x.id === id);
+            if (!w) return;
+            document.getElementById('edit-worker-id').value = w.id;
+            document.getElementById('w-name').value = w.name;
+            document.getElementById('w-cedula').value = w.cedula;
+            document.getElementById('w-email').value = w.email;
+            document.getElementById('w-group').value = w.groupId || '';
+            
+            const isMedical = !!w.isMedical;
+            document.getElementById('w-is-medical').checked = isMedical;
+            document.getElementById('w-specialty').value = w.specialty || '';
+            document.getElementById('w-guards').value = w.monthlyGuards || 10;
+            toggleWorkerMedicalFields();
+
+            document.getElementById('worker-form-title').textContent = "Editar Trabajador";
+            document.getElementById('w-submit-btn').textContent = "Actualizar Trabajador";
+            document.getElementById('w-cancel-btn').style.display = 'block';
+        };
+
+        window.resetWorkerForm = function() {
+            document.getElementById('worker-crud-form').reset();
+            document.getElementById('edit-worker-id').value = "";
+            document.getElementById('w-is-medical').checked = false;
+            toggleWorkerMedicalFields();
+            document.getElementById('worker-form-title').textContent = "Registrar Nuevo Trabajador";
+            document.getElementById('w-submit-btn').textContent = "Guardar Trabajador";
+            document.getElementById('w-cancel-btn').style.display = 'none';
+        };
+
+        window.deleteWorker = async function(id) {
+            if (confirm("¿Estás seguro de eliminar este trabajador?")) {
+                await deleteDoc(doc(db, "users", id));
+                const med = allMedicalStaff.find(m => m.uid === id);
+                if (med) {
+                    await deleteDoc(doc(db, "medicalStaff", med.id));
+                }
+                showToast("Trabajador eliminado", "success");
+            }
+        };
+
+        window.restoreWorker = async function(id) {
+            await updateDoc(doc(db, "users", id), { isExpelled: false, warnings: 0 });
+            showToast("Trabajador reintegrado exitosamente", "success");
+        };
+
+        // RENDERIZADO DEL PANEL MÉDICO CON CÁLCULO AUTOMÁTICO DE RESTANTES
+        function renderMedicalTable() {
+            const tbody = document.getElementById('medical-table-body');
+            if (!tbody) return;
+            tbody.innerHTML = "";
+
+            const medicalWorkers = allWorkers.filter(w => w.role === 'worker' && w.isMedical);
+            const currentYearMonth = new Date().toISOString().slice(0, 7);
+
+            if (medicalWorkers.length === 0 && allMedicalStaff.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--ios-subtext);">No hay personal médico registrado.</td></tr>`;
+                return;
+            }
+
+            medicalWorkers.forEach(m => {
+                const completedGuards = allAttendanceLogs.filter(l => 
+                    l.uid === m.id && 
+                    l.type === 'IN' && 
+                    l.dateString && 
+                    l.dateString.startsWith(currentYearMonth)
+                ).length;
+
+                const totalGuards = m.monthlyGuards || 10;
+                const remainingGuards = Math.max(0, totalGuards - completedGuards);
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><strong>${m.name}</strong><br><small style="color:var(--ios-subtext);">${m.specialty || 'Personal Médico'}</small></td>
+                    <td>${m.cedula}<br><small style="color:var(--ios-subtext);">${m.email}</small></td>
+                    <td>
+                        Meta: <strong>${totalGuards}</strong><br>
+                        <span style="color:var(--ios-success);">Cumplidas: ${completedGuards}</span> | 
+                        <span style="color:var(--ios-warning);">Restantes: ${remainingGuards}</span>
+                    </td>
+                    <td>
+                        <div class="row-actions">
+                            <button class="small-btn edit" onclick="editWorker('${m.id}')">Editar</button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // EVALUACIÓN DE TURNOS (SOLO PERSONAL OPERATIVO PROGRAMADO HOY Y EXCLUYENDO MÉDICOS)
+        function evaluateTodayStaff() {
+            const tbody = document.getElementById('hr-today-body');
+            if (!tbody) return;
+            tbody.innerHTML = "";
+
+            const workersOnly = allWorkers.filter(w => w.role === 'worker');
+            const todayStr = new Date().toISOString().split('T')[0];
+            const todayDate = new Date();
+            const dayOfWeek = todayDate.getDay();
+
+            let visibleCount = 0;
+
+            workersOnly.forEach(worker => {
+                if (worker.isMedical) return;
+
+                const group = allGroups.find(g => g.id === worker.groupId);
+                let shouldWorkToday = false;
+
+                if (group) {
+                    if (group.type === 'lunes-viernes') {
+                        shouldWorkToday = (dayOfWeek >= 1 && dayOfWeek <= 5);
+                    } else if (group.type === '24x48' && group.startDate) {
+                        const startD = new Date(group.startDate + 'T00:00:00');
+                        const diffTime = Math.abs(todayDate - startD);
+                        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+                        shouldWorkToday = (diffDays % 3 === 0);
+                    }
+                }
+
+                if (!shouldWorkToday) return;
+
+                visibleCount++;
+                const checkInLog = allAttendanceLogs.find(l => l.uid === worker.id && l.dateString === todayStr && l.type === 'IN');
+
+                let statusBadge = `<span class="badge" style="background:rgba(255,255,255,0.1); color:#fff;">No ha marcado</span>`;
+                let sanctionAction = `-`;
+
+                if (worker.isExpelled) {
+                    statusBadge = `<span class="badge danger">EXPULSADO (3 Amonestaciones)</span>`;
+                    sanctionAction = `<span style="color:var(--ios-danger); font-size:12px;">Sin acceso</span>`;
+                } else {
+                    if (checkInLog && checkInLog.timestamp) {
+                        const inTime = checkInLog.timestamp.toDate();
+                        const [expectedH, expectedM] = group && group.time ? group.time.split(':').map(Number) : [8, 0];
+                        const expectedDate = new Date(inTime);
+                        expectedDate.setHours(expectedH, expectedM, 0, 0);
+
+                        const toleranceMs = (group && group.tolerance ? group.tolerance : 15) * 60000;
+                        const limitTime = new Date(expectedDate.getTime() + toleranceMs);
+
+                        if (inTime > limitTime) {
+                            if (checkInLog.appealed) {
+                                statusBadge = `<span class="badge success">Retardo Apelado (Permiso/Orden)</span>`;
+                                sanctionAction = `<button class="small-btn success" onclick="toggleAppeal('${checkInLog.id}', false)">Quitar Apelación</button>`;
+                            } else {
+                                statusBadge = `<span class="badge danger">Llegó Tarde (${inTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})})</span>`;
+                                sanctionAction = `
+                                    <div class="row-actions">
+                                        <button class="small-btn warning" onclick="applyLateSanction('${worker.id}', '${worker.name}')">Sanción: 8h</button>
+                                        <button class="small-btn success" onclick="toggleAppeal('${checkInLog.id}', true)">Apelar (Permiso)</button>
+                                    </div>
+                                `;
+                            }
+                        } else {
+                            statusBadge = `<span class="badge success">A Tiempo (${inTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})})</span>`;
+                            sanctionAction = `<span style="color:var(--ios-success); font-size:12px;">Sin novedad</span>`;
+                        }
+                    } else {
+                        statusBadge = `<span class="badge warning">Ausente (Falta de 24h)</span>`;
+                        sanctionAction = `
+                            <div class="row-actions">
+                                <button class="small-btn success" onclick="justifyAbsence('${worker.id}', '${worker.name}')">Justificar</button>
+                                <button class="small-btn del" onclick="applyAbsenceWarning('${worker.id}', '${worker.name}', ${worker.warnings || 0})">Amonestar (24h)</button>
+                            </div>
+                        `;
+                    }
+                }
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><strong>${worker.name}</strong><br><small style="color:var(--ios-subtext);">${worker.cedula}</small></td>
+                    <td>${group ? group.name : 'Sin Grupo'}<br><small style="color:var(--ios-warning);">Amonestaciones: ${worker.warnings || 0}/3</small></td>
+                    <td><span style="color:#4ade80;">Sí</span></td>
+                    <td>${statusBadge}</td>
+                    <td>${sanctionAction}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            if (visibleCount === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--ios-subtext);">No hay personal operativo programado para laborar el día de hoy.</td></tr>`;
+            }
+        }
+
+        window.applyLateSanction = function(workerId, workerName) {
+            showToast(`Sanción aplicada a ${workerName}: Registradas 8 horas por pagar por retraso.`, "warning");
+        };
+
+        window.toggleAppeal = async function(logId, appealStatus) {
+            try {
+                await updateDoc(doc(db, "attendance", logId), {
+                    appealed: appealStatus
+                });
+                showToast(appealStatus ? "Retardo apelado correctamente por permiso u orden." : "Apelación retirada.", "success");
+            } catch (err) {
+                showToast("Error al actualizar la apelación", "error");
+            }
+        };
+
+        window.justifyAbsence = function(workerId, workerName) {
+            showToast(`Inasistencia de ${workerName} justificada correctamente. Sin penalización.`, "success");
+        };
+
+        window.applyAbsenceWarning = async function(workerId, workerName, currentWarnings) {
+            const newWarnings = currentWarnings + 1;
+            const isExpelled = newWarnings >= 3;
+
+            try {
+                await updateDoc(doc(db, "users", workerId), {
+                    warnings: newWarnings,
+                    isExpelled: isExpelled
+                });
+
+                if (isExpelled) {
+                    showToast(`⚠️ ¡${workerName} ha alcanzado 3 amonestaciones y ha sido EXPULSADO del sistema!`, "error");
+                } else {
+                    showToast(`Amonestación registrada para ${workerName}. Total: ${newWarnings}/3. Penado por 24h.`, "warning");
+                }
+            } catch (err) {
+                showToast("Error al aplicar amonestación", "error");
+            }
+        };
+
+        // GESTIÓN DEL HISTORIAL GENERAL CON FILTRADO DE TIEMPO (HOY, SEMANA, MES, ARCHIVOS)
+        window.onPeriodChange = function() {
+            const period = document.getElementById('filter-period').value;
+            const archiveContainer = document.getElementById('archive-selector-container');
+            if (period === 'archive') {
+                archiveContainer.style.display = 'block';
+                populateArchiveMonths();
+            } else {
+                archiveContainer.style.display = 'none';
+            }
+            filterAttendanceLogs();
+        };
+
+        function populateArchiveMonths() {
+            const select = document.getElementById('archive-month-select');
+            const months = [...new Set(allAttendanceLogs.map(l => l.dateString ? l.dateString.slice(0, 7) : null).filter(Boolean))].sort().reverse();
+            
+            select.innerHTML = "";
+            if (months.length === 0) {
+                select.innerHTML = `<option value="">No hay registros antiguos disponibles</option>`;
+                return;
+            }
+            months.forEach(m => {
+                const [year, month] = m.split('-');
+                const dateObj = new Date(year, month - 1, 1);
+                const monthName = dateObj.toLocaleString('es-ES', { month: 'long', year: 'numeric' });
+                select.innerHTML += `<option value="${m}">${monthName.charAt(0).toUpperCase() + monthName.slice(1)}</option>`;
+            });
+            filterAttendanceLogs();
+        }
+
+        window.filterAttendanceLogs = function() {
+            const searchVal = document.getElementById('filter-search').value.toLowerCase();
+            const dateVal = document.getElementById('filter-date').value;
+            const period = document.getElementById('filter-period').value;
+            const todayStr = new Date().toISOString().split('T')[0];
+            const currentYearMonth = todayStr.slice(0, 7);
+
+            // Calcular rango de la semana actual (Lunes a Domingo)
+            const now = new Date();
+            const day = now.getDay() || 7;
+            const monday = new Date(now);
+            monday.setHours(0,0,0,0);
+            monday.setDate(monday.getDate() - day + 1);
+            
+            const sunday = new Date(monday);
+            sunday.setDate(sunday.getDate() + 6);
+            sunday.setHours(23,59,59,999);
+
+            const filtered = allAttendanceLogs.filter(log => {
+                const matchesSearch = (log.name && log.name.toLowerCase().includes(searchVal)) || 
+                                      (log.cedula && log.cedula.toLowerCase().includes(searchVal));
+                
+                if (!matchesSearch) return false;
+
+                if (dateVal) {
+                    return log.dateString === dateVal;
+                }
+
+                if (period === 'today') {
+                    return log.dateString === todayStr;
+                } else if (period === 'week') {
+                    if (!log.timestamp) return false;
+                    const logDate = log.timestamp.toDate();
+                    return logDate >= monday && logDate <= sunday;
+                } else if (period === 'month') {
+                    return log.dateString && log.dateString.startsWith(currentYearMonth);
+                } else if (period === 'archive') {
+                    const selectedMonth = document.getElementById('archive-month-select').value;
+                    return selectedMonth ? (log.dateString && log.dateString.startsWith(selectedMonth)) : true;
+                } else if (period === 'all') {
+                    return true;
+                }
+                return true;
+            });
+
+            renderHRTable(filtered);
+        };
+
+        function renderHRTable(logs) {
+            const tbody = document.getElementById('hr-table-body');
+            if(!tbody) return;
+            tbody.innerHTML = "";
+
+            if (logs.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--ios-subtext);">No hay registros de marcaje para este filtro</td></tr>`;
+                return;
+            }
+
+            logs.forEach(log => {
+                const timeObj = log.timestamp ? log.timestamp.toDate() : null;
+                const timeStr = timeObj ? timeObj.toLocaleString() : 'Procesando...';
+                
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><strong>${log.name || 'Desconocido'}</strong></td>
+                    <td>${log.cedula || 'N/A'}</td>
+                    <td>${log.type === 'IN' ? '<span style="color:#4ade80;">Entrada</span>' : '<span style="color:#f87171;">Salida</span>'}</td>
+                    <td>${timeStr}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+    </script>
+</body>
+</html>
